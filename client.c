@@ -85,11 +85,8 @@ int main(int argc, char *argv[])
 
     servIP = argv[1];       /* First arg: server IP address (dotted quad) */
     machineName = argv[2];
-
     clientNumber = atoi(argv[3]);
-
     scriptFileName = argv[5];       /* Second arg: string to echo */
-
     serverPort = atoi(argv[4]);  /* Use given port */
 
     //Can now use loops to iterate through each line in the script file and send that to the server. Below is an example.

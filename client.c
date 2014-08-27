@@ -7,6 +7,7 @@
 #include "client.h"
 
 #define FILENAMEMAX 24     /* Longest string to echo */
+FILE *readFile;
 
 void DieWithError(const char *errorMessage) /* External error handling function */
 {
@@ -89,10 +90,27 @@ int main(int argc, char *argv[])
     scriptFileName = argv[5];       /* Second arg: string to echo */
     serverPort = atoi(argv[4]);  /* Use given port */
 
+    //Read from the script file
+    char command[100];
+
+    readFile = fopen(scriptFileName, "r");
+	if (readFile == NULL) {
+	   printf("Error: could not open %s\n", scriptFileName);
+	   exit(1);
+	}
+
+	while (fgets(command, sizeof command, readFile) != NULL) /* Read a line */
+	{
+		sendRequest("192.168.1.1", machineName, clientNumber, 1, 1, command, servIP, serverPort);
+		//fputs ( command, stdout ); /* Write the line */
+	}
+
+	fclose(readFile);
+
     //Can now use loops to iterate through each line in the script file and send that to the server. Below is an example.
     for (int i = 0; i < 4; i++)
     {
-    	sendRequest("192.168.1.1", machineName, clientNumber, i, i, scriptFileName, servIP, serverPort);
+    	//sendRequest("192.168.1.1", machineName, clientNumber, i, i, scriptFileName, servIP, serverPort);
     }
 
     exit(0);

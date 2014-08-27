@@ -1,0 +1,11 @@
+open f1.txt read
+read f1.txt 5
+write f1.txt "01234"
+lseek f1.txt 15
+read f1.txt 5
+close f1.txt
+fail
+open f2.txt write
+lseek f2.txt 10
+write f2.txt "01234"
+close f2.txt

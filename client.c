@@ -30,23 +30,25 @@ int main(int argc, char *argv[])
     int clientNumber;				 /* Number of the client */
 
 
-    if ((argc < 3) || (argc > 4))    /* Test for correct number of arguments */
+    if ((argc < 5) || (argc > 6))    /* Test for correct number of arguments */
     {
-        fprintf(stderr,"Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n", argv[0]);
+        fprintf(stderr,"Usage: %s <Server IP> <Machine Name> [<Client Number>] [<Echo Port>] <Script File Name> \n", argv[0]);
         exit(1);
     }
 
-    servIP = argv[1];           /* First arg: server IP address (dotted quad) */
-    scriptFileName = argv[2];       /* Second arg: string to echo */
+    servIP = argv[1];       /* First arg: server IP address (dotted quad) */
+    machineName = argv[2];
+    printf("Machine Name: %s \n", machineName);
+    clientNumber = atoi(argv[3]);
+    printf("Client Number: %i \n", clientNumber);
+    scriptFileName = argv[5];       /* Second arg: string to echo */
 
 
     if ((scriptFileNameStringLen = strlen(scriptFileName)) > FILENAMEMAX)  /* Check input length */
         DieWithError("Echo word too long");
 
-    if (argc == 4)
-        echoServPort = atoi(argv[3]);  /* Use given port, if any */
-    else
-        echoServPort = 7;  /* 7 is the well-known port for the echo service */
+    echoServPort = atoi(argv[4]);  /* Use given port */
+
 
     /* Create a datagram/UDP socket */
     if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)

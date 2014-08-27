@@ -14,7 +14,7 @@ OBJS1 = client.o
 OBJS2 = server.o
 CC = gcc
 DEBUG = -g
-CFLAGS = -Wall -c $(DEBUG)
+CFLAGS = -Wall -c $(DEBUG) -std=c99 -Wall
 LFLAGS = -Wall $(DEBUG)
 
 all: client server clean

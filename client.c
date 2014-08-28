@@ -101,17 +101,30 @@ int main(int argc, char *argv[])
 
 	while (fgets(command, sizeof command, readFile) != NULL) /* Read a line */
 	{
-		sendRequest("192.168.1.1", machineName, clientNumber, 1, 1, command, servIP, serverPort);
-		//fputs ( command, stdout ); /* Write the line */
+		//Get the first word of the command
+		size_t commandLength = strlen(command);
+		char localstr[commandLength+1];
+		char * instruction;
+		strcpy(localstr, command);
+		instruction = strtok(localstr, " ,");
+
+		//Remove newline character from instruction to compare.
+		size_t ln = strlen(instruction) - 1;
+		if (instruction[ln] == '\n') {
+			instruction[ln] = '\0';
+		}
+
+		//printf("The instruction of the line is: %s\n", instruction);
+
+		if (strcmp(instruction, "fail") == 0) {
+			printf("Command Failed. Will not send to server. \n\n");
+		} else {
+			sendRequest("192.168.1.1", machineName, clientNumber, 1, 1, command, servIP, serverPort);
+		}
+
 	}
 
 	fclose(readFile);
-
-    //Can now use loops to iterate through each line in the script file and send that to the server. Below is an example.
-    for (int i = 0; i < 4; i++)
-    {
-    	//sendRequest("192.168.1.1", machineName, clientNumber, i, i, scriptFileName, servIP, serverPort);
-    }
 
     exit(0);
 }

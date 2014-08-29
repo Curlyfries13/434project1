@@ -6,7 +6,7 @@
 #include <unistd.h>     /* for close() */
 #include "client.h"
 
-#define FILENAMEMAX 24     /* Longest string to echo */
+#define FILENAMEMAX 5120     /* Longest string to echo */
 FILE *readFile;
 
 void DieWithError(const char *errorMessage) /* External error handling function */
@@ -23,7 +23,7 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
 	unsigned int fromSize;           /* In-out of address size for recvfrom() */
 	char fileNameBuffer[FILENAMEMAX+1];  /* Buffer for receiving file name string */
 	int respStringLen;               /* Length of received response */
-    int operationStringLen;     /* Length of string to echo */
+    int operationStructSize;     /* Size of struct to send */
 
     struct request message;
 
@@ -34,9 +34,9 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
     message.i = i;
     strcpy(message.operation, operation);
 
-    operationStringLen = strlen(operation);
+    operationStructSize = sizeof(struct request);
 
-    if (operationStringLen > FILENAMEMAX)  /* Check input length */
+    if (operationStructSize > FILENAMEMAX)  /* Check input length */
         DieWithError("Echo word too long");
 
     printf("Client IP: %s \n", message.client_ip);
@@ -56,14 +56,14 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
 	echoServAddr.sin_port   = htons(serverPort);     /* Server port */
 
 	/* Send the string to the server */
-	if (sendto(sock, operation, operationStringLen, 0, (struct sockaddr *)
-			   &echoServAddr, sizeof(echoServAddr)) != operationStringLen)
+	if (sendto(sock, &message, operationStructSize, 0, (struct sockaddr *)
+			   &echoServAddr, sizeof(echoServAddr)) != operationStructSize)
 		DieWithError("sendto() sent a different number of bytes than expected");
 
 	/* Recv a response */
 	fromSize = sizeof(fromAddr);
 	if ((respStringLen = recvfrom(sock, fileNameBuffer, FILENAMEMAX, 0,
-		 (struct sockaddr *) &fromAddr, &fromSize)) != operationStringLen)
+		 (struct sockaddr *) &fromAddr, &fromSize)) != operationStructSize)
 		DieWithError("recvfrom() failed");
 
 	if (echoServAddr.sin_addr.s_addr != fromAddr.sin_addr.s_addr)

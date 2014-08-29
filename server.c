@@ -4,8 +4,9 @@
 #include <stdlib.h>     /* for atoi() and exit() */
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
+#include "server.h"
 
-#define ECHOMAX 255     /* Longest string to echo */
+#define ECHOMAX 225     /* Longest string to echo */
 
 void DieWithError(const char *errorMessage) /* External error handling function */
 {
@@ -19,7 +20,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in echoServAddr; /* Local address */
     struct sockaddr_in echoClntAddr; /* Client address */
     unsigned int cliAddrLen;         /* Length of incoming message */
-    char echoBuffer[ECHOMAX];        /* Buffer for echo string */
+    struct request structBuffer;        /* Buffer for echo string */
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
 
@@ -51,14 +52,22 @@ int main(int argc, char *argv[])
         cliAddrLen = sizeof(echoClntAddr);
 
         /* Block until receive message from a client */
-        if ((recvMsgSize = recvfrom(sock, echoBuffer, ECHOMAX, 0,
+        if ((recvMsgSize = recvfrom(sock, &structBuffer, sizeof(struct request), 0,
             (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
             DieWithError("recvfrom() failed");
 
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 
+        printf("Client IP: %s \n", structBuffer.client_ip);
+        printf("Machine Name: %s \n", structBuffer.m);
+        printf("Client Number: %i \n", structBuffer.c);
+        printf("Request Number: %i \n", structBuffer.r);
+        printf("Incarnation Number: %i \n", structBuffer.i);
+        printf("Operation: %s\n\n", structBuffer.operation);
+
+
         /* Send received datagram back to the client */
-        if (sendto(sock, echoBuffer, recvMsgSize, 0, 
+        if (sendto(sock, &structBuffer, recvMsgSize, 0,
              (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
             DieWithError("sendto() sent a different number of bytes than expected");
     }

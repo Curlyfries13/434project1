@@ -25,16 +25,25 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
 	int respStringLen;               /* Length of received response */
     int operationStringLen;     /* Length of string to echo */
 
+    struct request message;
+
+    strcpy(message.client_ip, client_ip);
+    strcpy(message.m, m);
+    message.c = c;
+    message.r = r;
+    message.i = i;
+    strcpy(message.operation, operation);
+
     operationStringLen = strlen(operation);
 
     if (operationStringLen > FILENAMEMAX)  /* Check input length */
         DieWithError("Echo word too long");
 
-    printf("Client IP: %s \n", client_ip);
-    printf("Machine Name: %s \n", m);
-    printf("Client Number: %i \n", c);
-    printf("Request Number: %i \n", r);
-    printf("Incarnation Number: %i \n", i);
+    printf("Client IP: %s \n", message.client_ip);
+    printf("Machine Name: %s \n", message.m);
+    printf("Client Number: %i \n", message.c);
+    printf("Request Number: %i \n", message.r);
+    printf("Incarnation Number: %i \n", message.i);
 
 	/* Create a datagram/UDP socket */
 	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
@@ -84,21 +93,29 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    servIP = argv[1];       /* First arg: server IP address (dotted quad) */
-    machineName = argv[2];
-    clientNumber = atoi(argv[3]);
+    //Get command line arguments
+    servIP = argv[3];       /* First arg: server IP address (dotted quad) */
+    machineName = argv[1];
+    clientNumber = atoi(argv[2]);
     scriptFileName = argv[5];       /* Second arg: string to echo */
     serverPort = atoi(argv[4]);  /* Use given port */
 
-    //Read from the script file
-    char command[100];
+    //Make sure the scriptFileName the user gave is not null
+    if (scriptFileName == NULL) {
+    	fprintf(stderr,"Usage: %s <Machine Name> [<Client Number>] <Server IP> [<Echo Port>] <Script File Name> \n", argv[0]);
+    	exit(1);
+    }
 
+    //Char command used to save each line read from the script file
+    char command[100];
+    //Read from the script file
     readFile = fopen(scriptFileName, "r");
 	if (readFile == NULL) {
 	   printf("Error: could not open %s\n", scriptFileName);
 	   exit(1);
 	}
 
+	//Loop through the file line by line until the end of the file
 	while (fgets(command, sizeof command, readFile) != NULL) /* Read a line */
 	{
 		//Get the first word of the command
@@ -108,14 +125,13 @@ int main(int argc, char *argv[])
 		strcpy(localstr, command);
 		instruction = strtok(localstr, " ,");
 
-		//Remove newline character from instruction to compare.
+		//Remove newline character from instruction to compare for fail.
 		size_t ln = strlen(instruction) - 1;
 		if (instruction[ln] == '\n') {
 			instruction[ln] = '\0';
 		}
 
-		//printf("The instruction of the line is: %s\n", instruction);
-
+		//Don't send the request on fail
 		if (strcmp(instruction, "fail") == 0) {
 			printf("Command Failed. Will not send to server. \n\n");
 		} else {

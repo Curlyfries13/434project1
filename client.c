@@ -86,10 +86,12 @@ int main(int argc, char *argv[])
     char *scriptFileName;            /* File name of script. */
     char *machineName;				 /* Machine name of the client */
     int clientNumber;				 /* Number of the client */
+    int requestNumber = 0;
+    int incarnationNumber = 0;
 
     if ((argc < 5) || (argc > 6))    /* Test for correct number of arguments */
     {
-        fprintf(stderr,"Usage: %s <Server IP> <Machine Name> [<Client Number>] [<Echo Port>] <Script File Name> \n", argv[0]);
+        fprintf(stderr,"Usage: %s <Machine Name> [<Client Number>] <Server IP> [<Port>] <Script File Name> \n", argv[0]);
         exit(1);
     }
 
@@ -135,7 +137,8 @@ int main(int argc, char *argv[])
 		if (strcmp(instruction, "fail") == 0) {
 			printf("Command Failed. Will not send to server. \n\n");
 		} else {
-			sendRequest("192.168.1.1", machineName, clientNumber, 1, 1, command, servIP, serverPort);
+			sendRequest("192.168.1.1", machineName, clientNumber, requestNumber, incarnationNumber, command, servIP, serverPort);
+			requestNumber++;
 		}
 
 	}

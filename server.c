@@ -1,4 +1,4 @@
-#include <stdio.h>      /* for printf() and fprintf() */
+#include <stdio.h>      /* for printf() and fprintf() and file access*/
 #include <sys/socket.h> /* for socket() and bind() */
 #include <arpa/inet.h>  /* for sockaddr_in and inet_ntoa() */
 #include <stdlib.h>     /* for atoi() and exit() */
@@ -14,6 +14,22 @@ void DieWithError(const char *errorMessage) /* External error handling function 
     exit(1);
 }
 
+int findClient(char clientName[]);
+
+bool addClient(char clientName[]);
+
+bool dropCilent(char clientname[]);
+
+int findFileStatus(char clientName[], char fileName[]);
+
+bool writeLock(char clientName[], char fileName[]);
+
+bool readLock(char clientName[], char fileName[]);
+
+bool writeUnlock(char clientName[], char fileName[]);
+
+bool readUnlock(char clientName[], char fileName[]);
+
 int main(int argc, char *argv[])
 {
     int sock;                        /* Socket */
@@ -23,6 +39,7 @@ int main(int argc, char *argv[])
     struct request structBuffer;        /* Buffer for echo string */
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
+	client* clients;
 
     if (argc != 2)         /* Test for correct number of parameters */
     {

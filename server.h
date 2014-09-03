@@ -15,14 +15,14 @@
 		char ownerName[24];
 		bool readLock;
 		bool writeLock;
-	}
+	};
 
 	struct client {
 		char name[24];
 		int incarnation;
 		int request;
-		file* files;
-		machine* next;
-	}
+		FILE* files;
+		//machine* next; /* is this supposed to be another struct? */
+	};
 
 #endif

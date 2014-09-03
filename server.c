@@ -4,6 +4,7 @@
 #include <stdlib.h>     /* for atoi() and exit() */
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
+#include <stdbool.h>    /* for boolean types */
 #include "server.h"
 
 #define ECHOMAX 225     /* Longest string to echo */
@@ -39,7 +40,7 @@ int main(int argc, char *argv[])
     struct request structBuffer;        /* Buffer for echo string */
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
-	client* clients;
+	struct client* clients;
 
     if (argc != 2)         /* Test for correct number of parameters */
     {

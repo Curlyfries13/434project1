@@ -137,7 +137,8 @@ int main(int argc, char *argv[])
 		if (strcmp(instruction, "fail") == 0) {
 			printf("Command Failed. Will not send to server. \n\n");
 		} else {
-			sendRequest("192.168.1.1", machineName, clientNumber, requestNumber, incarnationNumber, command, servIP, serverPort);
+			//Teacher said in class that client IP can be ignored in the struct.
+			sendRequest("", machineName, clientNumber, requestNumber, incarnationNumber, command, servIP, serverPort);
 			requestNumber++;
 		}
 

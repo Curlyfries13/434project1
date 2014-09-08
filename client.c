@@ -4,6 +4,7 @@
 #include <stdlib.h>     /* for atoi() and exit() */
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
+#include <sys/file.h>
 #include "client.h"
 
 #define FILENAMEMAX 5120     /* Longest string to echo */
@@ -13,6 +14,75 @@ void DieWithError(const char *errorMessage) /* External error handling function 
 {
     perror(errorMessage);
     exit(1);
+}
+
+void generateIncarnationFile(char * machineName) {
+	FILE* fp;
+	char fileName[100] = "incarnation-";;
+	strcat(fileName, machineName);
+	fp = fopen(fileName, "w+");
+	flock(fileno(fp), LOCK_SH);
+	//fprintf(fp, "%d", 1);
+	flock(fileno(fp), LOCK_UN);
+	fclose(fp);
+}
+
+void initIncarnationNumber(char * machineName) {
+	FILE* fp;
+	char fileName[100] = "incarnation-";;
+	strcat(fileName, machineName);
+	fp = fopen(fileName, "a");
+	flock(fileno(fp), LOCK_SH);
+	fprintf(fp, "%d", 0);
+	flock(fileno(fp), LOCK_UN);
+	fclose(fp);
+}
+
+void incrementIncarnationNumber(char * machineName) {
+	FILE *fp;
+	char fileName[100] = "incarnation-";;
+	strcat(fileName, machineName);
+	char line[100];
+	int incarnationNumber;
+    fp = fopen(fileName, "r+");
+	if (fp == NULL) {
+	   printf("Error: could not open %s\n", "incarnation");
+	   exit(1);
+	}
+    flock(fileno(fp), LOCK_SH);
+	//Loop through the file line by line until the end of the file
+	while (fgets(line, sizeof line, fp) != NULL) /* Read a line */
+	{
+		incarnationNumber = atoi(line);
+		incarnationNumber++;
+	}
+	flock(fileno(fp), LOCK_UN);
+	fclose(fp);
+
+	//Open file, clear the file, write the new incarnation number.
+	fp = fopen(fileName, "w");
+	flock(fileno(fp), LOCK_SH);
+	fprintf(fp, "%d", incarnationNumber);
+	flock(fileno(fp), LOCK_UN);
+	fclose(fp);
+}
+
+int getIncarnationNumber(char * machineName) {
+	FILE *fp;
+	char fileName[100] = "incarnation-";;
+	strcat(fileName, machineName);
+	char line[100];
+	int incarnationNumber;
+	fp = fopen(fileName, "r+");
+	if (fp == NULL) {
+	   printf("Error: could not open %s\n", "incarnation");
+	   exit(1);
+	}
+	while (fgets(line, sizeof line, fp) != NULL) /* Read a line */
+	{
+		incarnationNumber = atoi(line);
+	}
+	return incarnationNumber;
 }
 
 void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *operation, char *servIP, unsigned short serverPort)
@@ -87,7 +157,6 @@ int main(int argc, char *argv[])
     char *machineName;				 /* Machine name of the client */
     int clientNumber;				 /* Number of the client */
     int requestNumber = 0;
-    int incarnationNumber = 0;
 
     if ((argc < 5) || (argc > 6))    /* Test for correct number of arguments */
     {
@@ -107,6 +176,18 @@ int main(int argc, char *argv[])
     	fprintf(stderr,"Usage: %s <Machine Name> [<Client Number>] <Server IP> [<Echo Port>] <Script File Name> \n", argv[0]);
     	exit(1);
     }
+
+    //Generate incarnation file if one does not exist
+    FILE* fp;
+	char incFileName[100] = "incarnation-";
+	strcat(incFileName, machineName);
+    fp = fopen(incFileName, "r");
+    if (fp == NULL) {
+    	generateIncarnationFile(machineName);
+    	//Add current machine incarnation number to file
+    	initIncarnationNumber(machineName);
+    }
+    //fclose(fp);
 
     //Char command used to save each line read from the script file
     char command[100];
@@ -136,9 +217,11 @@ int main(int argc, char *argv[])
 		//Don't send the request on fail
 		if (strcmp(instruction, "fail") == 0) {
 			printf("Command Failed. Will not send to server. \n\n");
+			//Increment incarnation number.
+			incrementIncarnationNumber(machineName);
 		} else {
 			//Teacher said in class that client IP can be ignored in the struct.
-			sendRequest("", machineName, clientNumber, requestNumber, incarnationNumber, command, servIP, serverPort);
+			sendRequest("127.0.0.1", machineName, clientNumber, requestNumber, getIncarnationNumber(machineName), command, servIP, serverPort);
 			requestNumber++;
 		}
 

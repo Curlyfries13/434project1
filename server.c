@@ -8,17 +8,16 @@
 
 #define ECHOMAX 225     /* Longest string to echo */
 
-void DieWithError(const char *errorMessage) /* External error handling function */
-{
-    perror(errorMessage);
-    exit(1);
-}
+static client* clientHead;
+static int clientOffset;
+static int clientTableSize;
 
+//forward declarations
 int findClient(char clientName[]);
 
-bool addClient(char clientName[]);
+bool addClient(request structBuffer);
 
-bool dropCilent(char clientname[]);
+bool dropCilent(char clientName[]);
 
 int findFileStatus(char clientName[], char fileName[]);
 
@@ -30,6 +29,12 @@ bool writeUnlock(char clientName[], char fileName[]);
 
 bool readUnlock(char clientName[], char fileName[]);
 
+void DieWithError(const char *errorMessage) /* External error handling function */
+{
+    perror(errorMessage);
+    exit(1);
+}
+
 int main(int argc, char *argv[])
 {
     int sock;                        /* Socket */
@@ -39,7 +44,8 @@ int main(int argc, char *argv[])
     struct request structBuffer;        /* Buffer for echo string */
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
-	client* clients;
+	clientHead = NULL;
+	clientOffset = 0;
 
     if (argc != 2)         /* Test for correct number of parameters */
     {
@@ -73,6 +79,12 @@ int main(int argc, char *argv[])
             (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
             DieWithError("recvfrom() failed");
 
+		clientOffset = findClient(structBuffer.m);
+		if (clientHead == NULL || clientOffset == -1){
+			clientOffset = addClient(structBuffer);
+		}
+		
+		
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 
         printf("Client IP: %s \n", structBuffer.client_ip);
@@ -82,11 +94,90 @@ int main(int argc, char *argv[])
         printf("Incarnation Number: %i \n", structBuffer.i);
         printf("Operation: %s\n\n", structBuffer.operation);
 
-
+		if(findClient(structBuffer.m) == -1)
+			printf("Adding Machine... %s", addClient(structBuffer));
+		printf("Client Table size: %i", clientTableSize);
+		
+		
         /* Send received datagram back to the client */
         if (sendto(sock, &structBuffer, recvMsgSize, 0,
              (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
             DieWithError("sendto() sent a different number of bytes than expected");
     }
     /* NOT REACHED */
+}
+
+int findClient(char clientName[]){
+	client* searchPointer = clientHead;
+	int pointerOffset = 0;
+	while(strcmp(clientName, (searchPointer->name)) != 0 && (pointerOffset <= clientTableSize)){
+		searchPointer++;
+		pointerOffset++;
+	}
+	//check if client is found, if not return -1
+	if(pointerOffset > clientTableSize)
+		return -1;
+	else
+		return pointerOffset;
+}
+
+bool addClient(request structBuffer){
+	client* newClient = (client*) malloc(sizeof(client));
+	//newClient->ip = structBuffer.client_ip;
+	strcpy(newClient->ip,structBuffer.client_ip);
+	//newClient->name = structBuffer.m;
+	strcpy(newClient->ip,structBuffer.m);
+	newClient->incarnation = structBuffer.i;
+	newClient->request = structBuffer.r;
+	newClient->files = NULL;
+	newClient->next = clientHead;
+	clientHead = newClient;
+	clientTableSize++;
+	return true;
+}
+
+bool dropClient(char clientName[]){
+	int pointerOffset = findClient(clientName);
+	client* target;
+	//check to see if client exists
+	if (pointerOffset == -1)
+		return false;
+	//the client is at the head of the list
+	else if(pointerOffset == 0){
+		target = clientHead;
+		clientHead = clientHead -> next;
+		free(target);
+	}
+	else{
+		target = (clientHead + pointerOffset);
+		(target-1)->next = target->next;
+		free(target);
+	}
+	
+	return true;
+}
+
+//if file has no locks on it, then return its pointer offset
+int findFileStatus(char clientName[],  char fileName[]){
+	client* currentClient = (clientHead + findClient(clientName));
+	file* currentFiles = currentClient->files;
+	int fileOffset = 0;
+
+	while((currentFiles + fileOffset) != NULL && strcmp(fileName, (currentFiles + fileOffset)->fileName) != 0){
+		fileOffset++;
+	}
+
+	//return various codes for files that are not accessable
+	if((currentFiles + fileOffset) == NULL){
+		return -1;
+	}
+	else if((currentFiles + fileOffset)->writeLock){
+		return -3;
+	}
+	else if((currentFiles + fileOffset)->readLock){
+		return -2;
+	}
+	else{
+		return fileOffset;
+	}
 }

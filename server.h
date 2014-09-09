@@ -15,14 +15,16 @@
 		char ownerName[24];
 		bool readLock;
 		bool writeLock;
-	}
+		file* next;
+	};
 
 	struct client {
+		char ip[16];
 		char name[24];
 		int incarnation;
 		int request;
 		file* files;
-		machine* next;
-	}
+		client* next;
+	};
 
 #endif

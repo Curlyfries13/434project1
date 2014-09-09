@@ -16,7 +16,7 @@ static int clientTableSize;
 //forward declarations
 int findClient(char clientName[]);
 
-bool addClient(request structBuffer);
+client* addClient(request structBuffer);
 
 bool dropCilent(char clientName[]);
 
@@ -81,8 +81,10 @@ int main(int argc, char *argv[])
             DieWithError("recvfrom() failed");
 
 		clientOffset = findClient(structBuffer.m);
+
+		//check to see if client exists; if not add them.
 		if (clientHead == NULL || clientOffset == -1){
-			clientOffset = addClient(structBuffer);
+			addClient(structBuffer);
 		}
 		
 		
@@ -122,7 +124,7 @@ int findClient(char clientName[]){
 		return pointerOffset;
 }
 
-bool addClient(request structBuffer){
+client* addClient(request structBuffer){
 	client* newClient = (client*) malloc(sizeof(client));
 	//newClient->ip = structBuffer.client_ip;
 	strcpy(newClient->ip,structBuffer.client_ip);
@@ -134,7 +136,7 @@ bool addClient(request structBuffer){
 	newClient->next = clientHead;
 	clientHead = newClient;
 	clientTableSize++;
-	return true;
+	return newClient;
 }
 
 bool dropClient(char clientName[]){

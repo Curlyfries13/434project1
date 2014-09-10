@@ -1,0 +1,18 @@
+open f1.txt read
+read f1.txt 1
+close f1.txt
+open f2.txt read
+read f2.txt 1
+close f2.txt
+open f1.txt read
+read f1.txt 1
+lseek f1.txt 5
+read f1.txt 1
+lseek f1.txt 10
+read f1.txt 1
+close f1.txt
+open f2.txt read
+read f2.txt 5
+read f2.txt 5
+read f2.txt 5
+close f2.txt

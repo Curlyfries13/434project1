@@ -1,0 +1,7 @@
+open f1.txt readwrite
+read f1.txt 1
+read f1.txt 2
+read f1.txt 3
+lseek f1.txt 15
+write f1.txt "xxxxx"
+close f1.txt

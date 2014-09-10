@@ -9,14 +9,14 @@
 
 #define ECHOMAX 225     /* Longest string to echo */
 
-static client* clientHead;
+static struct client* clientHead;
 static int clientOffset;
 static int clientTableSize;
 
 //forward declarations
 int findClient(char clientName[]);
 
-client* addClient(request structBuffer);
+struct client* addClient(struct request structBuffer);
 
 bool dropCilent(char clientName[]);
 
@@ -97,8 +97,9 @@ int main(int argc, char *argv[])
         printf("Incarnation Number: %i \n", structBuffer.i);
         printf("Operation: %s\n\n", structBuffer.operation);
 
-		if(findClient(structBuffer.m) == -1)
-			printf("Adding Machine... %s", addClient(structBuffer));
+		if(findClient(structBuffer.m) == -1) {
+			printf("Adding Machine... %s", addClient(structBuffer)->name);
+		}
 		printf("Client Table size: %i", clientTableSize);
 		
 		
@@ -111,7 +112,7 @@ int main(int argc, char *argv[])
 }
 
 int findClient(char clientName[]){
-	client* searchPointer = clientHead;
+	struct client* searchPointer = clientHead;
 	int pointerOffset = 0;
 	while(strcmp(clientName, (searchPointer->name)) != 0 && (pointerOffset <= clientTableSize)){
 		searchPointer++;
@@ -124,12 +125,14 @@ int findClient(char clientName[]){
 		return pointerOffset;
 }
 
-client* addClient(request structBuffer){
-	client* newClient = (client*) malloc(sizeof(client));
+struct client* addClient(struct request structBuffer){
+	struct client *newClient = malloc(sizeof(struct client));
 	//newClient->ip = structBuffer.client_ip;
-	strcpy(newClient->ip,structBuffer.client_ip);
+	strcpy(newClient->ip, structBuffer.client_ip);
 	//newClient->name = structBuffer.m;
-	strcpy(newClient->ip,structBuffer.m);
+
+	//This line is going to overwrite what you did in line 130. Did you mean to do this?
+	strcpy(newClient->ip, structBuffer.m);
 	newClient->incarnation = structBuffer.i;
 	newClient->request = structBuffer.r;
 	newClient->files = NULL;
@@ -141,7 +144,7 @@ client* addClient(request structBuffer){
 
 bool dropClient(char clientName[]){
 	int pointerOffset = findClient(clientName);
-	client* target;
+	struct client* target;
 	//check to see if client exists
 	if (pointerOffset == -1)
 		return false;
@@ -162,8 +165,8 @@ bool dropClient(char clientName[]){
 
 //if file has no locks on it, then return its pointer offset
 int findFileStatus(char clientName[],  char fileName[]){
-	client* currentClient = (clientHead + findClient(clientName));
-	file* currentFiles = currentClient->files;
+	struct client* currentClient = (clientHead + findClient(clientName));
+	struct file* currentFiles = currentClient->files;
 	int fileOffset = 0;
 
 	while((currentFiles + fileOffset) != NULL && strcmp(fileName, (currentFiles + fileOffset)->fileName) != 0){

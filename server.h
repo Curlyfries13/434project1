@@ -15,7 +15,7 @@
 		char ownerName[24];
 		bool readLock;
 		bool writeLock;
-		file* next;
+		struct file* next;
 	};
 
 	struct client {
@@ -23,8 +23,8 @@
 		char name[24];
 		int incarnation;
 		int request;
-		file* files;
-		client* next;
+		struct file* files;
+		struct client* next;
 	};
 
 #endif

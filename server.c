@@ -79,15 +79,14 @@ int main(int argc, char *argv[])
         if ((recvMsgSize = recvfrom(sock, &structBuffer, sizeof(struct request), 0,
             (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
             DieWithError("recvfrom() failed");
-
+/*
 		clientOffset = findClient(structBuffer.m);
 
 		//check to see if client exists; if not add them.
 		if (clientHead == NULL || clientOffset == -1){
 			addClient(structBuffer);
 		}
-		
-		
+*/
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 
         printf("Client IP: %s \n", structBuffer.client_ip);
@@ -96,13 +95,12 @@ int main(int argc, char *argv[])
         printf("Request Number: %i \n", structBuffer.r);
         printf("Incarnation Number: %i \n", structBuffer.i);
         printf("Operation: %s\n\n", structBuffer.operation);
-
+/*
 		if(findClient(structBuffer.m) == -1) {
 			printf("Adding Machine... %s", addClient(structBuffer)->name);
 		}
 		printf("Client Table size: %i", clientTableSize);
-		
-		
+*/
         /* Send received datagram back to the client */
         if (sendto(sock, &structBuffer, recvMsgSize, 0,
              (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
@@ -114,6 +112,8 @@ int main(int argc, char *argv[])
 int findClient(char clientName[]){
 	struct client* searchPointer = clientHead;
 	int pointerOffset = 0;
+	//This products a segfault. You are trying to access searchPointer->name but its NULL because clientHead is NULL
+	//When you made the assignment two lines above this comment.
 	while(strcmp(clientName, (searchPointer->name)) != 0 && (pointerOffset <= clientTableSize)){
 		searchPointer++;
 		pointerOffset++;

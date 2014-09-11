@@ -85,13 +85,12 @@ int getIncarnationNumber(char * machineName) {
 	return incarnationNumber;
 }
 
-void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *operation, char *servIP, unsigned short serverPort)
+void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *operation, char *servIP, unsigned short serverPort, char *instruction)
 {
 	int sock;                        /* Socket descriptor */
 	struct sockaddr_in echoServAddr; /* Echo server address */
 	struct sockaddr_in fromAddr;     /* Source address of echo */
 	unsigned int fromSize;           /* In-out of address size for recvfrom() */
-	char fileNameBuffer[FILENAMEMAX+1];  /* Buffer for receiving file name string */
 	int respStringLen;               /* Length of received response */
     int operationStructSize;     /* Size of struct to send */
 
@@ -125,26 +124,58 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
 	echoServAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
 	echoServAddr.sin_port   = htons(serverPort);     /* Server port */
 
-	/* Send the string to the server */
+	/* Send the struct to the server */
 	if (sendto(sock, &message, operationStructSize, 0, (struct sockaddr *)
 			   &echoServAddr, sizeof(echoServAddr)) != operationStructSize)
 		DieWithError("sendto() sent a different number of bytes than expected");
 
 	/* Recv a response */
 	fromSize = sizeof(fromAddr);
-	if ((respStringLen = recvfrom(sock, fileNameBuffer, FILENAMEMAX, 0,
-		 (struct sockaddr *) &fromAddr, &fromSize)) != operationStructSize)
-		DieWithError("recvfrom() failed");
+
+	if (strcmp(instruction, "open") == 0) {
+		struct responseOpen open;
+		if ((respStringLen = recvfrom(sock, &open, sizeof(struct responseOpen), 0,
+		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseOpen)) {
+			DieWithError("recvfrom() failed\n");
+		}
+		printf("Received: %d\n\n", open.fileDescriptor);
+	} else if (strcmp(instruction, "close") == 0) {
+		struct responseClose close;
+		if ((respStringLen = recvfrom(sock, &close, sizeof(struct responseClose), 0,
+		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseClose)) {
+			DieWithError("recvfrom() failed\n");
+		}
+		printf("Received: %d\n\n", close.fileDescriptor);
+	} else if (strcmp(instruction, "read") == 0) {
+		struct responseRead read;
+		if ((respStringLen = recvfrom(sock, &read, sizeof(struct responseRead), 0,
+		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseRead)) {
+			DieWithError("recvfrom() failed on read\n");
+		}
+		printf("Received: %d\n\n", read.numberOfBytes);
+	} else if (strcmp(instruction, "write") == 0) {
+		struct responseWrite write;
+		if ((respStringLen = recvfrom(sock, &write, sizeof(struct responseWrite), 0,
+		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseWrite)) {
+			DieWithError("recvfrom() failed\n");
+		}
+		printf("Received: %d\n\n", write.numberOfBytes);
+	} else if (strcmp(instruction, "lseek") == 0) {
+		struct responseLseek lseek;
+		if ((respStringLen = recvfrom(sock, &lseek, sizeof(struct responseLseek), 0,
+		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseLseek)) {
+			DieWithError("recvfrom() failed\n");
+		}
+		printf("Received: %d\n\n", lseek.position);
+	} else {
+		//Unexpected instruction. Do nothing.
+	}
 
 	if (echoServAddr.sin_addr.s_addr != fromAddr.sin_addr.s_addr)
 	{
 		fprintf(stderr,"Error: received a packet from unknown source.\n");
 		exit(1);
 	}
-
-	/* null-terminate the received data */
-	fileNameBuffer[respStringLen] = '\0';
-	printf("Received: %s\n\n", fileNameBuffer);    /* Print the script file name arg */
 
 	close(sock);
 }
@@ -186,8 +217,9 @@ int main(int argc, char *argv[])
     	generateIncarnationFile(machineName);
     	//Add current machine incarnation number to file
     	initIncarnationNumber(machineName);
+    } else {
+    	fclose(fp);
     }
-    //fclose(fp);
 
     //Char command used to save each line read from the script file
     char command[100];
@@ -221,7 +253,7 @@ int main(int argc, char *argv[])
 			incrementIncarnationNumber(machineName);
 		} else {
 			//Teacher said in class that client IP can be ignored in the struct.
-			sendRequest("127.0.0.1", machineName, clientNumber, requestNumber, getIncarnationNumber(machineName), command, servIP, serverPort);
+			sendRequest("127.0.0.1", machineName, clientNumber, requestNumber, getIncarnationNumber(machineName), command, servIP, serverPort, instruction);
 			requestNumber++;
 		}
 

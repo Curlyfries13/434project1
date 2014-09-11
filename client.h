@@ -10,4 +10,26 @@
 		char   operation[80];  /* File operation client sends to server */
 	};
 
+	struct responseOpen {
+		int fileDescriptor;
+	};
+
+	struct responseClose {
+		int fileDescriptor;
+	};
+
+	struct responseRead {
+		int numberOfBytes;
+		char readBytes[80];
+	};
+
+	struct responseWrite {
+		int numberOfBytes;
+		char writenBytes[80];
+	};
+
+	struct responseLseek {
+		int position;
+	};
+
 #endif

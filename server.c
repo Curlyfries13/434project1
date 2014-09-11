@@ -101,10 +101,91 @@ int main(int argc, char *argv[])
 		}
 		printf("Client Table size: %i", clientTableSize);
 */
-        /* Send received datagram back to the client */
-        if (sendto(sock, &structBuffer, recvMsgSize, 0,
-             (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
-            DieWithError("sendto() sent a different number of bytes than expected");
+
+        /* Send a struct back to the client with requested information */
+
+        //Get the first word of the operation from the received struct. This will help us determine what type of struct to send back to the client.
+		size_t operationLength = strlen(structBuffer.operation);
+		char localstr[operationLength+1];
+		char * instruction;
+		strcpy(localstr, structBuffer.operation);
+		instruction = strtok(localstr, " ,");
+
+		printf("The instruction in the operation received is: %s\n", instruction);
+		//Decide which operation to perform and the type of struct to send back to the client
+		//based on the request.
+		/********ALL STRUCTS ARE CURRENTLY RETURNING TEMPORARY FAKE DATA SINCE FUNCTIONS DON'T EXIST TO SEND REAL DATA BACK TO CLIENT***********/
+		if (strcmp(instruction, "open") == 0) {
+			struct responseOpen open;
+
+			//Make a call to the open function
+
+
+			//Save the returned data to the struct
+			open.fileDescriptor = 2;
+
+			//Send the struct back to the client
+			if (sendto(sock, &open, sizeof(struct responseOpen), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseOpen)) {
+				DieWithError("sendto() sent a different number of bytes than expected");
+			}
+		} else if (strcmp(instruction, "close") == 0) {
+			struct responseClose close;
+
+			//Make a call to the close function
+
+
+			//Save the returned data to the struct
+			close.fileDescriptor = 1;
+
+			//Send the struct back to the client
+			if (sendto(sock, &close, sizeof(struct responseClose), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseClose)) {
+				DieWithError("sendto() sent a different number of bytes than expected");
+			}
+		} else if (strcmp(instruction, "read") == 0) {
+			struct responseRead read;
+
+			//Make a call to the read function
+
+
+			//Save the returned data to the struct
+			read.numberOfBytes = 24;
+			strcpy(read.readBytes, "testing");
+
+			//Send the struct back to the client
+			if (sendto(sock, &read, sizeof(struct responseRead), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseRead)) {
+				DieWithError("sendto() sent a different number of bytes than expected");
+			}
+		} else if (strcmp(instruction, "write") == 0) {
+			struct responseWrite write;
+
+			//Make a call to the write function
+
+
+			//Save the returned data to the struct
+			write.numberOfBytes = 16;
+			strcpy(write.writenBytes, "write test");
+
+			//Send the struct back to the client
+			if (sendto(sock, &write, sizeof(struct responseWrite), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseWrite)) {
+				DieWithError("sendto() sent a different number of bytes than expected");
+			}
+		} else if (strcmp(instruction, "lseek") == 0) {
+			struct responseLseek lseek;
+
+			//Make a call to the lseek function
+
+
+			//Save the returned data to the struct
+			lseek.position = 9;
+
+			//Send the struct back to the client
+			if (sendto(sock, &lseek, sizeof(struct responseLseek), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseLseek)) {
+				DieWithError("sendto() sent a different number of bytes than expected");
+			}
+		} else {
+			//Unexpected instruction. Do nothing.
+		}
+		/* END OF CONDITIONAL STATEMENTS TO DETEMINE WHICH STRUCT TO SEND BACK TO CLIENT */
     }
     /* NOT REACHED */
 }

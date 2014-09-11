@@ -5,9 +5,12 @@
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
 #include <sys/file.h>
+#include <sys/time.h>
 #include "client.h"
 
 #define FILENAMEMAX 5120     /* Longest string to echo */
+#define TIMEOUT_SEC 3        /* Length of the UDP recvfrom() Timeout (s) */
+#define TIMEOUT_MSEC 0       /* Length of the UDP recvfrom() Timeout (ms) */
 FILE *readFile;
 
 void DieWithError(const char *errorMessage) /* External error handling function */
@@ -93,6 +96,7 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
 	unsigned int fromSize;           /* In-out of address size for recvfrom() */
 	int respStringLen;               /* Length of received response */
     int operationStructSize;     /* Size of struct to send */
+    struct timeval timeOut; /* Structure to Modify UDP Socket Timeout */
 
     struct request message;
 
@@ -117,6 +121,14 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
 	/* Create a datagram/UDP socket */
 	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
 		DieWithError("socket() failed");
+
+	/* Initialize Timeout Value */
+	timeOut.tv_sec = TIMEOUT_SEC;
+	timeOut.tv_usec = TIMEOUT_MSEC;
+
+	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut)) < 0) {
+		DieWithError("setsockopt() failed");
+	}
 
 	/* Construct the server address structure */
 	memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */

@@ -9,21 +9,13 @@
 		int    i;               /* Incarnation number of client’s machine */
 		char   operation[80];  /* File operation client sends to server */
 	};
-	
-	struct file {
-		char fileName[24];
-		char ownerName[24];
-		bool readLock;
-		bool writeLock;
-		struct file* next;
-	};
 
 	struct client {
 		char ip[16];
 		char name[24];
+		int clientNumber;
 		int incarnation;
 		int request;
-		struct file* files;
 		struct client* next;
 	};
 

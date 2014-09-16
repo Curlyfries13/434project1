@@ -14,21 +14,21 @@ static int clientOffset;
 static int clientTableSize;
 
 //forward declarations
-int findClient(char clientName[]);
+int findClient(int clientNumber);
 
 struct client* addClient(struct request structBuffer);
 
-bool dropCilent(char clientName[]);
+bool dropCilent(int clientNumber);
 
-int findFileStatus(char clientName[], char fileName[]);
+//bool addFile(struct client* client, char fileName[]);
 
-bool writeLock(char clientName[], char fileName[]);
+bool writeLock(struct client* client, char fileName[]);
 
-bool readLock(char clientName[], char fileName[]);
+bool readLock(struct client* client, char fileName[]);
 
-bool writeUnlock(char clientName[], char fileName[]);
+bool writeUnlock(struct client* client, char fileName[]);
 
-bool readUnlock(char clientName[], char fileName[]);
+bool readUnlock(struct client* client, char fileName[]);
 
 void DieWithError(const char *errorMessage) /* External error handling function */
 {
@@ -79,14 +79,9 @@ int main(int argc, char *argv[])
         if ((recvMsgSize = recvfrom(sock, &structBuffer, sizeof(struct request), 0,
             (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
             DieWithError("recvfrom() failed");
-/*
-		clientOffset = findClient(structBuffer.m);
 
-		//check to see if client exists; if not add them.
-		if (clientHead == NULL || clientOffset == -1){
-			addClient(structBuffer);
-		}
-*/
+		clientOffset = findClient(structBuffer.c);
+
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 
         printf("Client IP: %s \n", structBuffer.client_ip);
@@ -95,12 +90,14 @@ int main(int argc, char *argv[])
         printf("Request Number: %i \n", structBuffer.r);
         printf("Incarnation Number: %i \n", structBuffer.i);
         printf("Operation: %s\n\n", structBuffer.operation);
-/*
-		if(findClient(structBuffer.m) == -1) {
-			printf("Adding Machine... %s", addClient(structBuffer)->name);
+
+		if(clientOffset == -1) {
+			printf("Adding client... %s\n", addClient(structBuffer)->name);
+			printf("Client at %i\n", findClient(structBuffer.c));
+			printf("Client Table size: %i\n", clientTableSize);
 		}
-		printf("Client Table size: %i", clientTableSize);
-*/
+		
+
 
         /* Send a struct back to the client with requested information */
 
@@ -190,13 +187,11 @@ int main(int argc, char *argv[])
     /* NOT REACHED */
 }
 
-int findClient(char clientName[]){
-	struct client* searchPointer = clientHead;
+int findClient(int clientNumber){
 	int pointerOffset = 0;
-	//This products a segfault. You are trying to access searchPointer->name but its NULL because clientHead is NULL
-	//When you made the assignment two lines above this comment.
-	while(strcmp(clientName, (searchPointer->name)) != 0 && (pointerOffset <= clientTableSize)){
-		searchPointer++;
+	while((clientHead + pointerOffset) != NULL && 
+		clientNumber != (clientHead + pointerOffset)->clientNumber &&
+		(pointerOffset <= clientTableSize)){
 		pointerOffset++;
 	}
 	//check if client is found, if not return -1
@@ -207,24 +202,20 @@ int findClient(char clientName[]){
 }
 
 struct client* addClient(struct request structBuffer){
-	struct client *newClient = malloc(sizeof(struct client));
-	//newClient->ip = structBuffer.client_ip;
+	struct client *newClient = (client*) malloc(sizeof(struct client));
 	strcpy(newClient->ip, structBuffer.client_ip);
-	//newClient->name = structBuffer.m;
-
-	//This line is going to overwrite what you did in line 130. Did you mean to do this?
 	strcpy(newClient->ip, structBuffer.m);
+	newClient->clientNumber = structBuffer.c;
 	newClient->incarnation = structBuffer.i;
 	newClient->request = structBuffer.r;
-	newClient->files = NULL;
 	newClient->next = clientHead;
 	clientHead = newClient;
 	clientTableSize++;
 	return newClient;
 }
 
-bool dropClient(char clientName[]){
-	int pointerOffset = findClient(clientName);
+bool dropClient(int clientNumber){
+	int pointerOffset = findClient(clientNumber);
 	struct client* target;
 	//check to see if client exists
 	if (pointerOffset == -1)
@@ -242,29 +233,4 @@ bool dropClient(char clientName[]){
 	}
 	
 	return true;
-}
-
-//if file has no locks on it, then return its pointer offset
-int findFileStatus(char clientName[],  char fileName[]){
-	struct client* currentClient = (clientHead + findClient(clientName));
-	struct file* currentFiles = currentClient->files;
-	int fileOffset = 0;
-
-	while((currentFiles + fileOffset) != NULL && strcmp(fileName, (currentFiles + fileOffset)->fileName) != 0){
-		fileOffset++;
-	}
-
-	//return various codes for files that are not accessable
-	if((currentFiles + fileOffset) == NULL){
-		return -1;
-	}
-	else if((currentFiles + fileOffset)->writeLock){
-		return -3;
-	}
-	else if((currentFiles + fileOffset)->readLock){
-		return -2;
-	}
-	else{
-		return fileOffset;
-	}
 }

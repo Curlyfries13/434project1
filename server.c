@@ -108,7 +108,34 @@ int main(int argc, char *argv[])
 		strcpy(localstr, structBuffer.operation);
 		instruction = strtok(localstr, " ,");
 
+		//Remove the instruction keyword from the string
+		char fileNameTemp[operationLength+1];
+		strcpy(fileNameTemp, structBuffer.operation);
+		char * operationFileName = fileNameTemp;
+		while (*operationFileName != 0 && *(operationFileName++) != ' ') {}
+
+		//Get the first word of the left over instuction string which gives us the file name the client wants to access
+		size_t fileNamePlusAdditional = strlen(operationFileName);
+		char tempstr[fileNamePlusAdditional+1];
+		char * fileName;
+		strcpy(tempstr, operationFileName);
+		fileName = strtok(tempstr, " ,");
+
 		printf("The instruction in the operation received is: %s\n", instruction);
+		printf("The file name received from client is: %s\n", fileName);
+
+		//Check if request from client will have a 3rd parameter
+		if (strcmp(instruction, "open") == 0 || strcmp(instruction, "read") == 0 ||
+				strcmp(instruction, "write") == 0 || strcmp(instruction, "lseek") == 0) {
+			//Get the last parameter in the clients request
+			char paramTemp[fileNamePlusAdditional+1];
+			strcpy(paramTemp, operationFileName);
+			char * param = paramTemp;
+			while (*param != 0 && *(param++) != ' ') {}
+			printf("3rd parameter of request is: %s\n", param);
+		}
+
+
 		//Decide which operation to perform and the type of struct to send back to the client
 		//based on the request.
 		/********ALL STRUCTS ARE CURRENTLY RETURNING TEMPORARY FAKE DATA SINCE FUNCTIONS DON'T EXIST TO SEND REAL DATA BACK TO CLIENT***********/

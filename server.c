@@ -202,7 +202,7 @@ int findClient(int clientNumber){
 }
 
 struct client* addClient(struct request structBuffer){
-	struct client *newClient = (client*) malloc(sizeof(struct client));
+	struct client *newClient = (struct client*) malloc(sizeof(struct client));
 	strcpy(newClient->ip, structBuffer.client_ip);
 	strcpy(newClient->ip, structBuffer.m);
 	newClient->clientNumber = structBuffer.c;

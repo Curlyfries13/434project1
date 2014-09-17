@@ -72,7 +72,7 @@ void incrementIncarnationNumber(char * machineName) {
 
 int getIncarnationNumber(char * machineName) {
 	FILE *fp;
-	char fileName[100] = "incarnation-";;
+	char fileName[100] = "incarnation-";
 	strcat(fileName, machineName);
 	char line[100];
 	int incarnationNumber;
@@ -85,6 +85,7 @@ int getIncarnationNumber(char * machineName) {
 	{
 		incarnationNumber = atoi(line);
 	}
+	fclose(fp);
 	return incarnationNumber;
 }
 

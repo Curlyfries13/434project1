@@ -30,6 +30,9 @@ bool writeUnlock(struct client* client, char fileName[]);
 
 bool readUnlock(struct client* client, char fileName[]);
 
+int openFile(char * fileName, char * mode);
+char * readFile(char * fileName, int readBytes);
+
 void DieWithError(const char *errorMessage) /* External error handling function */
 {
     perror(errorMessage);
@@ -124,17 +127,23 @@ int main(int argc, char *argv[])
 		printf("The instruction in the operation received is: %s\n", instruction);
 		printf("The file name received from client is: %s\n", fileName);
 
+		char paramTemp[fileNamePlusAdditional+1];
+		strcpy(paramTemp, operationFileName);
+		char * param = paramTemp;
 		//Check if request from client will have a 3rd parameter
 		if (strcmp(instruction, "open") == 0 || strcmp(instruction, "read") == 0 ||
 				strcmp(instruction, "write") == 0 || strcmp(instruction, "lseek") == 0) {
 			//Get the last parameter in the clients request
-			char paramTemp[fileNamePlusAdditional+1];
-			strcpy(paramTemp, operationFileName);
-			char * param = paramTemp;
+
 			while (*param != 0 && *(param++) != ' ') {}
+
+			char *paramClean;
+			if ((paramClean=strchr(param, '\n')) != NULL) {
+			    *paramClean = '\0';
+			}
+
 			printf("3rd parameter of request is: %s\n", param);
 		}
-
 
 		//Decide which operation to perform and the type of struct to send back to the client
 		//based on the request.
@@ -142,11 +151,9 @@ int main(int argc, char *argv[])
 		if (strcmp(instruction, "open") == 0) {
 			struct responseOpen open;
 
-			//Make a call to the open function
-
-
-			//Save the returned data to the struct
-			open.fileDescriptor = 2;
+			//Make a call to the open function and save the returned data to the struct
+			open.fileDescriptor = openFile(fileName, param);
+			printf("Open File Report: %d\n", open.fileDescriptor);
 
 			//Send the struct back to the client
 			if (sendto(sock, &open, sizeof(struct responseOpen), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseOpen)) {
@@ -169,11 +176,12 @@ int main(int argc, char *argv[])
 			struct responseRead read;
 
 			//Make a call to the read function
-
+			char *readB;
+			readB = readFile(fileName, atoi(param));
 
 			//Save the returned data to the struct
 			read.numberOfBytes = 24;
-			strcpy(read.readBytes, "testing");
+			strcpy(read.readBytes, readB);
 
 			//Send the struct back to the client
 			if (sendto(sock, &read, sizeof(struct responseRead), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseRead)) {
@@ -260,4 +268,39 @@ bool dropClient(int clientNumber){
 	}
 	
 	return true;
+}
+
+/*
+ * open function for the client
+ */
+int openFile(char * fileName, char * mode) {
+	FILE *fp;
+	printf("Mode: %s\n", mode);
+	if (strcmp(mode, "read") == 0) {
+		//Client wants to read
+		printf("File name to open: %s\n", fileName);
+		fp = fopen(fileName, "r");
+		if (fp == NULL) {
+		   printf("Error: could not open %s\n", fileName);
+		   return -1;
+		}
+	} else {
+		//Client wants to write
+		printf("File name to open: %s\n", fileName);
+		fp = fopen(fileName, "r+");
+		if (fp == NULL) {
+		   printf("Error: could not open %s\n", fileName);
+		   return -1;
+		}
+	}
+	fclose(fp);
+	return 1;
+}
+
+char * readFile(char * fileName, int readBytes) {
+	FILE *fp;
+	fp = fopen(fileName, "r");
+	//Read from file and return it
+	fclose(fp);
+	return fileName;
 }

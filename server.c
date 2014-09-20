@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		//check for incarnation problems
 			if(structBuffer.i > (clientHead + clientOffset)->incarnation){
 				//client has failed: remove all locks/close files for abandoned clients
-				client* incarnationScrub = clientHead;
+				struct client* incarnationScrub = clientHead;
 				while(incarnationScrub != NULL){
 					if(strcmp(incarnationScrub->name, structBuffer.m)==0){
 						closeFile(incarnationScrub->file);

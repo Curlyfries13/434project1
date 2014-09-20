@@ -31,7 +31,12 @@ bool writeUnlock(struct client* client, char fileName[]);
 bool readUnlock(struct client* client, char fileName[]);
 
 int openFile(char * fileName, char * mode);
-char * readFile(char * fileName, int readBytes);
+int closeFile(char * fileName);
+void readFile(char * fileName, int readBytes, char *buffer);
+void writeFile(char * fileName, char *writeBuffer);
+void lseekFile(char * fileName, int position);
+
+void removeQuotes(char * string);
 
 void DieWithError(const char *errorMessage) /* External error handling function */
 {
@@ -136,11 +141,40 @@ int main(int argc, char *argv[])
 			//Get the last parameter in the clients request
 
 			while (*param != 0 && *(param++) != ' ') {}
-
+/*
+			//Remove carriage return
+			char *paramCleanReturn;
+			if ((paramCleanReturn=strchr(param, '\r')) != NULL) {
+			    *paramCleanReturn = '\0';
+			    printf("Do I get here in r?");
+			}
+*/
+			//Remove newline
 			char *paramClean;
 			if ((paramClean=strchr(param, '\n')) != NULL) {
 			    *paramClean = '\0';
+			    printf("Do I get here in newline?");
 			}
+
+/*
+			for(int i = 0; param[i] != '\0'; i++) {
+
+				if (param[i] == '\0') {
+					printf("End of string found!");
+				}
+				if (param[i] == ' ') {
+					printf("Space found!");
+				}
+				if (param[i] == '\r') {
+					printf("Carriage return found!");
+				}
+				if (param[i] == '\n') {
+					printf("Newline found!");
+				}
+			    printf("Char %d: %c\n", i, param[i]);
+
+			}
+*/
 
 			printf("3rd parameter of request is: %s\n", param);
 		}
@@ -163,10 +197,8 @@ int main(int argc, char *argv[])
 			struct responseClose close;
 
 			//Make a call to the close function
-
-
 			//Save the returned data to the struct
-			close.fileDescriptor = 1;
+			close.fileDescriptor = closeFile(fileName);
 
 			//Send the struct back to the client
 			if (sendto(sock, &close, sizeof(struct responseClose), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseClose)) {
@@ -176,12 +208,15 @@ int main(int argc, char *argv[])
 			struct responseRead read;
 
 			//Make a call to the read function
-			char *readB;
-			readB = readFile(fileName, atoi(param));
+			char *readBuffer = malloc(atoi(param));
+			readFile(fileName, atoi(param), readBuffer);
 
 			//Save the returned data to the struct
-			read.numberOfBytes = 24;
-			strcpy(read.readBytes, readB);
+			read.numberOfBytes = atoi(param);
+			strcpy(read.readBytes, readBuffer);
+
+			//Free malloc assigned memory
+			free(readBuffer);
 
 			//Send the struct back to the client
 			if (sendto(sock, &read, sizeof(struct responseRead), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseRead)) {
@@ -190,12 +225,16 @@ int main(int argc, char *argv[])
 		} else if (strcmp(instruction, "write") == 0) {
 			struct responseWrite write;
 
-			//Make a call to the write function
+			//Remove quotes from param
+			//char removeCharacter = '"';
+			//removeQuotes(param);
 
+			//Make a call to the write function
+			writeFile(fileName, param);
 
 			//Save the returned data to the struct
-			write.numberOfBytes = 16;
-			strcpy(write.writenBytes, "write test");
+			write.numberOfBytes = sizeof(param);
+			strcpy(write.writenBytes, param);
 
 			//Send the struct back to the client
 			if (sendto(sock, &write, sizeof(struct responseWrite), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseWrite)) {
@@ -205,10 +244,10 @@ int main(int argc, char *argv[])
 			struct responseLseek lseek;
 
 			//Make a call to the lseek function
-
+			lseekFile(fileName, param);
 
 			//Save the returned data to the struct
-			lseek.position = 9;
+			lseek.position = param;
 
 			//Send the struct back to the client
 			if (sendto(sock, &lseek, sizeof(struct responseLseek), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseLseek)) {
@@ -297,10 +336,58 @@ int openFile(char * fileName, char * mode) {
 	return 1;
 }
 
-char * readFile(char * fileName, int readBytes) {
+/*
+ * close file
+ */
+int closeFile(char * fileName) {
+	printf("Close file %s", fileName);
+	return 1;
+}
+
+/*
+ * readFile
+ * Params:
+ * fileName: the name of the file to read from
+ * readBytes: the number of chars (bytes) to read
+ * buffer: the char array to save the read bytes to
+ */
+void readFile(char * fileName, int readBytes, char *buffer) {
 	FILE *fp;
 	fp = fopen(fileName, "r");
 	//Read from file and return it
+	if (fp != NULL) {
+		size_t newLen = fread(buffer, sizeof(char), readBytes, fp);
+		if (newLen == 0) {
+			fputs("Error reading file", stderr);
+		} else {
+			buffer[++newLen] = '\0'; /* Just to be safe. */
+		}
+	}
 	fclose(fp);
-	return fileName;
+}
+
+/*
+ * writeFile
+ *
+ *
+ */
+void writeFile(char * fileName, char *writeBuffer) {
+	FILE *fp;
+	fp = fopen(fileName, "r+");
+	if (fp != NULL) {
+		fwrite(writeBuffer, 1, sizeof(writeBuffer), fp);
+	}
+	fclose(fp);
+}
+
+void lseekFile(char * fileName, int position) {
+
+}
+
+/*
+ * Helper function to remove quotes from string
+ */
+void removeQuotes(char * string) {
+	size_t len = strlen(string);
+	memmove(string, string+1, len-3);
 }

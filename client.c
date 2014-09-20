@@ -165,7 +165,8 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
 		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseRead)) {
 			DieWithError("recvfrom() failed on read\n");
 		}
-		printf("Received: %d\n\n", read.numberOfBytes);
+		printf("Received: %d\n", read.numberOfBytes);
+		printf("Received: %s\n\n", read.readBytes);
 	} else if (strcmp(instruction, "write") == 0) {
 		struct responseWrite write;
 		if ((respStringLen = recvfrom(sock, &write, sizeof(struct responseWrite), 0,

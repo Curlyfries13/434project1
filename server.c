@@ -1,9 +1,11 @@
 #include <stdio.h>      /* for printf() and fprintf() and file access*/
 #include <sys/socket.h> /* for socket() and bind() */
+#include <sys/file.h>	/* for flock() */
+#include <fcntl.h>		/* for open() and read() */
 #include <arpa/inet.h>  /* for sockaddr_in and inet_ntoa() */
 #include <stdlib.h>     /* for atoi() and exit() */
 #include <string.h>     /* for memset() */
-#include <unistd.h>     /* for close() */
+#include <unistd.h>     /* for close(), write(), and lseek */
 #include <stdbool.h>    /* for boolean types */
 #include "server.h"
 
@@ -20,21 +22,15 @@ struct client* addClient(struct request structBuffer);
 
 bool dropCilent(int clientNumber);
 
-//bool addFile(struct client* client, char fileName[]);
-
-bool writeLock(struct client* client, char fileName[]);
-
-bool readLock(struct client* client, char fileName[]);
-
-bool writeUnlock(struct client* client, char fileName[]);
-
-bool readUnlock(struct client* client, char fileName[]);
+int closeFile(int fileDescriptor);
 
 int openFile(char * fileName, char * mode);
-int closeFile(char * fileName);
-void readFile(char * fileName, int readBytes, char *buffer);
-void writeFile(char * fileName, char *writeBuffer);
-void lseekFile(char * fileName, int position);
+
+char * readFile(char * fileName, char* buffer, int readBytes);
+
+int writeFile(int fileDescriptor, char* string); 
+
+int seekFile(int fileDescriptor, int offset);
 
 void removeQuotes(char * string);
 
@@ -103,6 +99,9 @@ int main(int argc, char *argv[])
 			printf("Adding client... %s\n", addClient(structBuffer)->name);
 			printf("Client at %i\n", findClient(structBuffer.c));
 			printf("Client Table size: %i\n", clientTableSize);
+		}
+		else{
+			printf("Current file number: % \n", (clientHead + clientOffset)->file;
 		}
 		
 
@@ -193,12 +192,12 @@ int main(int argc, char *argv[])
 			if (sendto(sock, &open, sizeof(struct responseOpen), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseOpen)) {
 				DieWithError("sendto() sent a different number of bytes than expected");
 			}
+
 		} else if (strcmp(instruction, "close") == 0) {
 			struct responseClose close;
 
 			//Make a call to the close function
-			//Save the returned data to the struct
-			close.fileDescriptor = closeFile(fileName);
+			close.fileDescriptor = closeFile((clientHead + clientOffset)->file);
 
 			//Send the struct back to the client
 			if (sendto(sock, &close, sizeof(struct responseClose), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseClose)) {
@@ -208,8 +207,8 @@ int main(int argc, char *argv[])
 			struct responseRead read;
 
 			//Make a call to the read function
-			char *readBuffer = malloc(atoi(param));
-			readFile(fileName, atoi(param), readBuffer);
+			char *readB = new char[80];
+			readB = readFile(fileName,readB, atoi(param));
 
 			//Save the returned data to the struct
 			read.numberOfBytes = atoi(param);
@@ -230,7 +229,7 @@ int main(int argc, char *argv[])
 			//removeQuotes(param);
 
 			//Make a call to the write function
-			writeFile(fileName, param);
+			//writeFile((clientHead + clientOffset)->file, 
 
 			//Save the returned data to the struct
 			write.numberOfBytes = sizeof(param);
@@ -283,6 +282,7 @@ struct client* addClient(struct request structBuffer){
 	newClient->incarnation = structBuffer.i;
 	newClient->request = structBuffer.r;
 	newClient->next = clientHead;
+	newClient->file = -1;
 	clientHead = newClient;
 	clientTableSize++;
 	return newClient;
@@ -310,84 +310,61 @@ bool dropClient(int clientNumber){
 }
 
 /*
- * open function for the client
+ * open function for the client, placing the correct lock on the file
+ * returns a filed descriptor int
  */
 int openFile(char * fileName, char * mode) {
-	FILE *fp;
+	int fd;
 	printf("Mode: %s\n", mode);
 	if (strcmp(mode, "read") == 0) {
 		//Client wants to read
 		printf("File name to open: %s\n", fileName);
-		fp = fopen(fileName, "r");
-		if (fp == NULL) {
+		fd = open(fileName, O_RDONLY);
+		//try to give a shared lock to the file
+		if (flock(fd, LOCK_SH) == -1) {
 		   printf("Error: could not open %s\n", fileName);
+		   //release file descriptor
+		   close(fd);
 		   return -1;
 		}
-	} else {
+	}
+	else {
 		//Client wants to write
 		printf("File name to open: %s\n", fileName);
-		fp = fopen(fileName, "r+");
-		if (fp == NULL) {
+		fd = open(fileName, O_RDWR);
+		//try to give an exclusive lock to the file
+		if (flock(fd, LOCK_EX) == -1) {
 		   printf("Error: could not open %s\n", fileName);
+		   //release file descriptor
+		   close(fd);
 		   return -1;
 		}
 	}
-	fclose(fp);
-	return 1;
+	return fd;
 }
 
-/*
- * close file
- */
-int closeFile(char * fileName) {
-	printf("Close file %s", fileName);
-	return 1;
+//close user access to the file(also releases locks)
+int closeFile(int fileDescriptor){
+	if(close(fileDescriptor) == -1){
+		printf("\n-----ERROR-----\nCould not close file!\n");
+		return -1;
+	}
+	else return 1;
 }
 
-/*
- * readFile
- * Params:
- * fileName: the name of the file to read from
- * readBytes: the number of chars (bytes) to read
- * buffer: the char array to save the read bytes to
- */
-void readFile(char * fileName, int readBytes, char *buffer) {
-	FILE *fp;
-	fp = fopen(fileName, "r");
+//Read a specified number of bits from a file
+char * readFile(int fileDescriptor, char* buffer, int readBytes) {
+	read(fileDescriptor, buffer, readBytes);
 	//Read from file and return it
-	if (fp != NULL) {
-		size_t newLen = fread(buffer, sizeof(char), readBytes, fp);
-		if (newLen == 0) {
-			fputs("Error reading file", stderr);
-		} else {
-			buffer[++newLen] = '\0'; /* Just to be safe. */
-		}
-	}
-	fclose(fp);
+	return buffer;
 }
 
-/*
- * writeFile
- *
- *
- */
-void writeFile(char * fileName, char *writeBuffer) {
-	FILE *fp;
-	fp = fopen(fileName, "r+");
-	if (fp != NULL) {
-		fwrite(writeBuffer, 1, sizeof(writeBuffer), fp);
-	}
-	fclose(fp);
+//writes specified string to file, returns # of bytes written
+int writeFile(int fileDescriptor, char* string){
+	return write(fileDescriptor, string, strlen(string));
 }
 
-void lseekFile(char * fileName, int position) {
-
-}
-
-/*
- * Helper function to remove quotes from string
- */
-void removeQuotes(char * string) {
-	size_t len = strlen(string);
-	memmove(string, string+1, len-3);
+//seeks within a file, returns how many bytes were offset.
+int seekFile(int fileDescriptor, int offest){
+	return lseek(fileDescriptor, offset);
 }

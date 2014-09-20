@@ -107,6 +107,32 @@ int main(int argc, char *argv[])
 			//printf("Current file number: % \n", (clientHead + clientOffset)->file);
 		}
 
+		/*DEBUG
+		printf("Comparing client. . .\n");
+		printf("\n\n--Client Table Data--\n");
+		printf("Client IP: %s \n", (clientHead + clientOffset)->ip);
+        printf("Machine Name: %s \n", (clientHead + clientOffset)->name);
+		printf("Client Number: %i \n", (clientHead + clientOffset)->clientNumber);
+        printf("Request Number: %i \n", (clientHead + clientOffset)->request);
+        printf("Incarnation Number: %i \n", (clientHead + clientOffset)->incarnation);
+		printf("File #: %i\n", (clientHead + clientOffset)->file);
+		*/
+
+		//ignore request: already fulfilled
+			if(structBuffer.r < (clientHead + clientOffset)->request)
+				continue;
+		//check for incarnation problems
+			if(structBuffer.i > (clientHead + clientOffset)->incarnation){
+				//client has failed: remove all locks/close files for abandoned clients
+				client* incarnationScrub = clientHead;
+				while(incarnationScrub != NULL){
+					if(strcmp(incarnationScrub->name, structBuffer.m)==0){
+						closeFile(incarnationScrub->file);
+						incarnationScrub->file = -1;
+					}
+				}
+			}
+
         /* Send a struct back to the client with requested information */
 
         //Get the first word of the operation from the received struct. This will help us determine what type of struct to send back to the client.
@@ -192,7 +218,8 @@ int main(int argc, char *argv[])
 			struct responseOpen open;
 
 			//Make a call to the open function and save the returned data to the struct
-			open.fileDescriptor = openFile(fileName, param);
+			(clientHead + clientOffset)->file = openFile(fileName, param);
+			open.fileDescriptor = (clientHead + clientOffset)->file;
 			printf("Open File Report: %d\n", open.fileDescriptor);
 
 			//Send the struct back to the client
@@ -254,6 +281,9 @@ int main(int argc, char *argv[])
 			//Unexpected instruction. Do nothing.
 		}
 		/* END OF CONDITIONAL STATEMENTS TO DETEMINE WHICH STRUCT TO SEND BACK TO CLIENT */
+
+		//update request number
+		(clientHead + clientOffset)->request = structBuffer.r;
 		printf("finished command\n");
     }
     /* NOT REACHED */
@@ -353,7 +383,7 @@ int openFile(char * fileName, char * mode) {
 //close user access to the file(also releases locks)
 int closeFile(int fileDescriptor){
 	if(close(fileDescriptor) == -1){
-		printf("\n-----ERROR-----\nCould not close file!\n");
+		printf("Could not close file\n");
 		return -1;
 	}
 	else return 1;

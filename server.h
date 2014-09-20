@@ -16,6 +16,7 @@
 		int clientNumber;
 		int incarnation;
 		int request;
+		int file;
 		struct client* next;
 	};
 

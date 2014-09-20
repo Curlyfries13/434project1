@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     int recvMsgSize;                 /* Size of received message */
 	clientHead = NULL;
 	clientOffset = 0;
-	char *ownerPrefix = new char[24];//holds machine name
+	char *ownerPrefix =(char*) malloc(sizeof(char[24]));//holds machine name
 
     if (argc != 2)         /* Test for correct number of parameters */
     {
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		//check for incarnation problems
 			if(structBuffer.i > (clientHead + clientOffset)->incarnation){
 				//client has failed: remove all locks/close files for abandoned clients
-				client* incarnationScrub = clientHead;
+				struct client* incarnationScrub = clientHead;
 				while(incarnationScrub != NULL){
 					if(strcmp(incarnationScrub->name, structBuffer.m)==0){
 						closeFile(incarnationScrub->file);
@@ -133,6 +133,12 @@ int main(int argc, char *argv[])
 				}
 			}
 
+		//simulate random noise roll a 99 sided dice
+		//int roll = rand() % 99;
+		//if(roll < 33){
+		//	printf("dropping request (oops!)\n");
+		//	continue;
+		//}	
         /* Send a struct back to the client with requested information */
 
         //Get the first word of the operation from the received struct. This will help us determine what type of struct to send back to the client.
@@ -211,6 +217,12 @@ int main(int argc, char *argv[])
 
 			printf("3rd parameter of request is: %s\n", param);
 		}
+
+		//loosing in transit
+		//if (roll > 66){
+		//	printf("loosing request (oops!)\n");
+		//	continue;
+		//}
 
 		//Decide which operation to perform and the type of struct to send back to the client
 		//based on the request.
@@ -380,7 +392,7 @@ int openFile(char * fileName, char * mode) {
 	return fd;
 }
 
-//close user access to the file(also releases locks)
+//close user access to the file(also releases user locks)
 int closeFile(int fileDescriptor){
 	if(close(fileDescriptor) == -1){
 		printf("Could not close file\n");
@@ -389,7 +401,7 @@ int closeFile(int fileDescriptor){
 	else return 1;
 }
 
-//Read a specified number of bits from a file
+//Read a specified number of bits from a file, return the string out
 char * readFile(int fileDescriptor, char* buffer, int readBytes) {
 	read(fileDescriptor, buffer, readBytes);
 	//Read from file and return it
@@ -401,8 +413,9 @@ int writeFile(int fileDescriptor, char* string){
 	return write(fileDescriptor, string, strlen(string));
 }
 
-//seeks within a file, returns how many bytes were offset.
+//seeks within a file, returns how many bytes were offset (from the begining of the file).
 int seekFile(int fileDescriptor, int offset){
-	printf("seeking!\n");
+	//DEBUG
+	//printf("seeking!\n");
 	return lseek(fileDescriptor, offset, SEEK_SET);
 }

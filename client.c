@@ -118,6 +118,7 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
     printf("Client Number: %i \n", message.c);
     printf("Request Number: %i \n", message.r);
     printf("Incarnation Number: %i \n", message.i);
+	printf("Operation: \"%s\"\n", operation);
 
 	/* Create a datagram/UDP socket */
 	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
@@ -149,36 +150,35 @@ void sendRequest(char client_ip[16], char m[24], int c, int r, int i, char *oper
 		struct responseOpen open;
 		if ((respStringLen = recvfrom(sock, &open, sizeof(struct responseOpen), 0,
 		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseOpen)) {
-			DieWithError("recvfrom() failed\n");
+			DieWithError("open recvfrom() failed\n");
 		}
 		printf("Received: %d\n\n", open.fileDescriptor);
 	} else if (strcmp(instruction, "close") == 0) {
 		struct responseClose close;
 		if ((respStringLen = recvfrom(sock, &close, sizeof(struct responseClose), 0,
 		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseClose)) {
-			DieWithError("recvfrom() failed\n");
+			DieWithError("close recvfrom() failed\n");
 		}
 		printf("Received: %d\n\n", close.fileDescriptor);
 	} else if (strcmp(instruction, "read") == 0) {
 		struct responseRead read;
 		if ((respStringLen = recvfrom(sock, &read, sizeof(struct responseRead), 0,
 		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseRead)) {
-			DieWithError("recvfrom() failed on read\n");
+			DieWithError("read recvfrom() failed on read\n");
 		}
-		printf("Received: %d\n", read.numberOfBytes);
-		printf("Received: %s\n\n", read.readBytes);
+		printf("Received: %d\n\n", read.numberOfBytes);
 	} else if (strcmp(instruction, "write") == 0) {
 		struct responseWrite write;
 		if ((respStringLen = recvfrom(sock, &write, sizeof(struct responseWrite), 0,
 		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseWrite)) {
-			DieWithError("recvfrom() failed\n");
+			DieWithError("write recvfrom() failed\n");
 		}
 		printf("Received: %d\n\n", write.numberOfBytes);
 	} else if (strcmp(instruction, "lseek") == 0) {
 		struct responseLseek lseek;
 		if ((respStringLen = recvfrom(sock, &lseek, sizeof(struct responseLseek), 0,
 		 (struct sockaddr *) &fromAddr, &fromSize)) != sizeof(struct responseLseek)) {
-			DieWithError("recvfrom() failed\n");
+			DieWithError("lseek recvfrom() failed\n");
 		}
 		printf("Received: %d\n\n", lseek.position);
 	} else {
@@ -252,13 +252,15 @@ int main(int argc, char *argv[])
 		char localstr[commandLength+1];
 		char * instruction;
 		strcpy(localstr, command);
-		instruction = strtok(localstr, " ,");
+		instruction = strtok(localstr, " ,\n");
 
 		//Remove newline character from instruction to compare for fail.
 		size_t ln = strlen(instruction) - 1;
 		if (instruction[ln] == '\n') {
 			instruction[ln] = '\0';
 		}
+
+		//printf("Formatted instruction: \"%s \" \n", instruction);	
 
 		//Don't send the request on fail
 		if (strcmp(instruction, "fail") == 0) {

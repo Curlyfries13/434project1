@@ -26,7 +26,7 @@ int closeFile(int fileDescriptor);
 
 int openFile(char * fileName, char * mode);
 
-char * readFile(char * fileName, char* buffer, int readBytes);
+char * readFile(int fileDescriptor, char* buffer, int readBytes);
 
 int writeFile(int fileDescriptor, char* string); 
 
@@ -51,6 +51,7 @@ int main(int argc, char *argv[])
     int recvMsgSize;                 /* Size of received message */
 	clientHead = NULL;
 	clientOffset = 0;
+	char *ownerPrefix = new char[24];//holds machine name
 
     if (argc != 2)         /* Test for correct number of parameters */
     {
@@ -86,6 +87,7 @@ int main(int argc, char *argv[])
 
 		clientOffset = findClient(structBuffer.c);
 
+		printf("Client: %i\n", clientOffset);
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 
         printf("Client IP: %s \n", structBuffer.client_ip);
@@ -99,12 +101,11 @@ int main(int argc, char *argv[])
 			printf("Adding client... %s\n", addClient(structBuffer)->name);
 			printf("Client at %i\n", findClient(structBuffer.c));
 			printf("Client Table size: %i\n", clientTableSize);
+			clientOffset = findClient(structBuffer.c);
 		}
 		else{
-			printf("Current file number: % \n", (clientHead + clientOffset)->file;
+			//printf("Current file number: % \n", (clientHead + clientOffset)->file);
 		}
-		
-
 
         /* Send a struct back to the client with requested information */
 
@@ -125,11 +126,14 @@ int main(int argc, char *argv[])
 		size_t fileNamePlusAdditional = strlen(operationFileName);
 		char tempstr[fileNamePlusAdditional+1];
 		char * fileName;
+		strcpy(ownerPrefix, (clientHead + clientOffset)->name);
 		strcpy(tempstr, operationFileName);
 		fileName = strtok(tempstr, " ,");
+		strcpy(ownerPrefix, (clientHead + clientOffset)->name);
 
 		printf("The instruction in the operation received is: %s\n", instruction);
 		printf("The file name received from client is: %s\n", fileName);
+		
 
 		char paramTemp[fileNamePlusAdditional+1];
 		strcpy(paramTemp, operationFileName);
@@ -137,8 +141,12 @@ int main(int argc, char *argv[])
 		//Check if request from client will have a 3rd parameter
 		if (strcmp(instruction, "open") == 0 || strcmp(instruction, "read") == 0 ||
 				strcmp(instruction, "write") == 0 || strcmp(instruction, "lseek") == 0) {
-			//Get the last parameter in the clients request
 
+			//format file name for access	
+			fileName = strcat(strcat(ownerPrefix, ":"), fileName);
+			printf("The machine file name is: %s\n", fileName);
+
+			//Get the last parameter in the clients request
 			while (*param != 0 && *(param++) != ' ') {}
 /*
 			//Remove carriage return
@@ -152,7 +160,7 @@ int main(int argc, char *argv[])
 			char *paramClean;
 			if ((paramClean=strchr(param, '\n')) != NULL) {
 			    *paramClean = '\0';
-			    printf("Do I get here in newline?");
+			    //printf("Do I get here in newline?");
 			}
 
 /*
@@ -180,7 +188,6 @@ int main(int argc, char *argv[])
 
 		//Decide which operation to perform and the type of struct to send back to the client
 		//based on the request.
-		/********ALL STRUCTS ARE CURRENTLY RETURNING TEMPORARY FAKE DATA SINCE FUNCTIONS DON'T EXIST TO SEND REAL DATA BACK TO CLIENT***********/
 		if (strcmp(instruction, "open") == 0) {
 			struct responseOpen open;
 
@@ -206,16 +213,10 @@ int main(int argc, char *argv[])
 		} else if (strcmp(instruction, "read") == 0) {
 			struct responseRead read;
 
-			//Make a call to the read function
-			char *readB = new char[80];
-			readB = readFile(fileName,readB, atoi(param));
+			readFile((clientHead + clientOffset)->file, read.readBytes, atoi(param));
 
 			//Save the returned data to the struct
 			read.numberOfBytes = atoi(param);
-			strcpy(read.readBytes, readBuffer);
-
-			//Free malloc assigned memory
-			free(readBuffer);
 
 			//Send the struct back to the client
 			if (sendto(sock, &read, sizeof(struct responseRead), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseRead)) {
@@ -229,7 +230,7 @@ int main(int argc, char *argv[])
 			//removeQuotes(param);
 
 			//Make a call to the write function
-			//writeFile((clientHead + clientOffset)->file, 
+			writeFile((clientHead + clientOffset)->file, param);
 
 			//Save the returned data to the struct
 			write.numberOfBytes = sizeof(param);
@@ -240,22 +241,20 @@ int main(int argc, char *argv[])
 				DieWithError("sendto() sent a different number of bytes than expected");
 			}
 		} else if (strcmp(instruction, "lseek") == 0) {
-			struct responseLseek lseek;
+			struct responseLseek seek;
 
-			//Make a call to the lseek function
-			lseekFile(fileName, param);
-
-			//Save the returned data to the struct
-			lseek.position = param;
+			//Make a call to the lseek function and save returned data to struct
+			seek.position = seekFile((clientHead + clientOffset)->file, atoi(param));
 
 			//Send the struct back to the client
-			if (sendto(sock, &lseek, sizeof(struct responseLseek), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseLseek)) {
+			if (sendto(sock, &seek, sizeof(struct responseLseek), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseLseek)) {
 				DieWithError("sendto() sent a different number of bytes than expected");
 			}
 		} else {
 			//Unexpected instruction. Do nothing.
 		}
 		/* END OF CONDITIONAL STATEMENTS TO DETEMINE WHICH STRUCT TO SEND BACK TO CLIENT */
+		printf("finished command\n");
     }
     /* NOT REACHED */
 }
@@ -263,12 +262,12 @@ int main(int argc, char *argv[])
 int findClient(int clientNumber){
 	int pointerOffset = 0;
 	while((clientHead + pointerOffset) != NULL && 
-		clientNumber != (clientHead + pointerOffset)->clientNumber &&
-		(pointerOffset <= clientTableSize)){
+		(clientNumber != (clientHead + pointerOffset)->clientNumber)){
 		pointerOffset++;
 	}
+
 	//check if client is found, if not return -1
-	if(pointerOffset > clientTableSize)
+	if((clientHead + pointerOffset) == NULL)
 		return -1;
 	else
 		return pointerOffset;
@@ -277,7 +276,7 @@ int findClient(int clientNumber){
 struct client* addClient(struct request structBuffer){
 	struct client *newClient = (struct client*) malloc(sizeof(struct client));
 	strcpy(newClient->ip, structBuffer.client_ip);
-	strcpy(newClient->ip, structBuffer.m);
+	strcpy(newClient->name, structBuffer.m);
 	newClient->clientNumber = structBuffer.c;
 	newClient->incarnation = structBuffer.i;
 	newClient->request = structBuffer.r;
@@ -322,10 +321,14 @@ int openFile(char * fileName, char * mode) {
 		fd = open(fileName, O_RDONLY);
 		//try to give a shared lock to the file
 		if (flock(fd, LOCK_SH) == -1) {
-		   printf("Error: could not open %s\n", fileName);
-		   //release file descriptor
-		   close(fd);
-		   return -1;
+		   //file might not exist yet!
+			fd = open(fileName, O_RDONLY | O_CREAT);
+			if(flock(fd, LOCK_SH) == -1){
+				printf("Error: could not open %s\n", fileName);
+			 //release file descriptor
+			   close(fd);
+			   return -1;
+			}
 		}
 	}
 	else {
@@ -334,10 +337,14 @@ int openFile(char * fileName, char * mode) {
 		fd = open(fileName, O_RDWR);
 		//try to give an exclusive lock to the file
 		if (flock(fd, LOCK_EX) == -1) {
-		   printf("Error: could not open %s\n", fileName);
+			//file might not exist yet!
+			fd = open(fileName, O_RDWR | O_CREAT);
+			if(flock(fd, LOCK_EX) == -1){
+				printf("Error: could not open %s\n", fileName);
 		   //release file descriptor
-		   close(fd);
-		   return -1;
+			   close(fd);
+			   return -1;
+			}
 		}
 	}
 	return fd;
@@ -365,6 +372,7 @@ int writeFile(int fileDescriptor, char* string){
 }
 
 //seeks within a file, returns how many bytes were offset.
-int seekFile(int fileDescriptor, int offest){
-	return lseek(fileDescriptor, offset);
+int seekFile(int fileDescriptor, int offset){
+	printf("seeking!\n");
+	return lseek(fileDescriptor, offset, SEEK_SET);
 }

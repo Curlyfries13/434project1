@@ -119,8 +119,9 @@ int main(int argc, char *argv[])
 		*/
 
 		//ignore request: already fulfilled
-			if(structBuffer.r < currentClient->request)
-				continue;
+		if(structBuffer.r < currentClient->request) {
+			continue;
+		}
 		//check for incarnation problems
 			if(structBuffer.i > currentClient->incarnation){
 				//client has failed: remove all locks/close files for abandoned clients
@@ -133,6 +134,7 @@ int main(int argc, char *argv[])
 					}
 				}
 			}
+		}
 
 		//simulate random noise roll a 99 sided dice
 		//int roll = rand() % 99;
@@ -244,6 +246,7 @@ int main(int argc, char *argv[])
 			struct responseClose close;
 
 			//Make a call to the close function
+			//printf("Current File Descriptor: %d\n", currentClient->file);
 			close.fileDescriptor = closeFile(currentClient->file);
 
 			//Send the struct back to the client

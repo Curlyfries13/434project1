@@ -129,6 +129,7 @@ int main(int argc, char *argv[])
 					if(strcmp(incarnationScrub->name, structBuffer.m)==0 && incarnationScrub->file != -1){
 						closeFile(incarnationScrub->file);
 						incarnationScrub->file = -1;
+						incarnationScrub = incarnationScrub->next;
 					}
 				}
 			}

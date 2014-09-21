@@ -123,25 +123,26 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		//check for incarnation problems
-			if(structBuffer.i > currentClient->incarnation){
-				//client has failed: remove all locks/close files for abandoned clients
-				struct client* incarnationScrub = clientHead;
-				while(incarnationScrub != NULL){
-					if(strcmp(incarnationScrub->name, structBuffer.m)==0 && incarnationScrub->file != -1){
-						closeFile(incarnationScrub->file);
-						incarnationScrub->file = -1;
-						incarnationScrub = incarnationScrub->next;
-					}
+		if(structBuffer.i > currentClient->incarnation){
+			//client has failed: remove all locks/close files for abandoned clients
+			struct client* incarnationScrub = clientHead;
+			while(incarnationScrub != NULL){
+				if(strcmp(incarnationScrub->name, structBuffer.m)==0 && incarnationScrub->file != -1){
+					closeFile(incarnationScrub->file);
+					incarnationScrub->file = -1;
+					incarnationScrub = incarnationScrub->next;
 				}
 			}
 		}
 
+		//VESTIGIAL
 		//simulate random noise roll a 99 sided dice
 		//int roll = rand() % 99;
 		//if(roll < 33){
 		//	printf("dropping request (oops!)\n");
 		//	continue;
-		//}	
+		//}
+
         /* Send a struct back to the client with requested information */
 
         //Get the first word of the operation from the received struct. This will help us determine what type of struct to send back to the client.
@@ -221,6 +222,7 @@ int main(int argc, char *argv[])
 			printf("3rd parameter of request is: %s\n", param);
 		}
 
+		//VESTIGIAL
 		//loosing in transit
 		//if (roll > 66){
 		//	printf("loosing request (oops!)\n");

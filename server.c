@@ -119,19 +119,20 @@ int main(int argc, char *argv[])
 		*/
 
 		//ignore request: already fulfilled
-			if(structBuffer.r < currentClient->request)
-				continue;
+		if(structBuffer.r < currentClient->request) {
+			continue;
+		}
 		//check for incarnation problems
-			if(structBuffer.i > currentClient->incarnation){
-				//client has failed: remove all locks/close files for abandoned clients
-				struct client* incarnationScrub = clientHead;
-				while(incarnationScrub != NULL){
-					if(strcmp(incarnationScrub->name, structBuffer.m)==0 && incarnationScrub->file != -1){
-						closeFile(incarnationScrub->file);
-						incarnationScrub->file = -1;
-					}
+		if(structBuffer.i > currentClient->incarnation){
+			//client has failed: remove all locks/close files for abandoned clients
+			struct client* incarnationScrub = clientHead;
+			if (incarnationScrub != NULL){
+				if(strcmp(incarnationScrub->name, structBuffer.m)==0 && incarnationScrub->file != -1){
+					closeFile(incarnationScrub->file);
+					incarnationScrub->file = -1;
 				}
 			}
+		}
 
 		//simulate random noise roll a 99 sided dice
 		//int roll = rand() % 99;
@@ -243,6 +244,7 @@ int main(int argc, char *argv[])
 			struct responseClose close;
 
 			//Make a call to the close function
+			//printf("Current File Descriptor: %d\n", currentClient->file);
 			close.fileDescriptor = closeFile(currentClient->file);
 
 			//Send the struct back to the client

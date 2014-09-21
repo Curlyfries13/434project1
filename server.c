@@ -12,11 +12,11 @@
 #define ECHOMAX 225     /* Longest string to echo */
 
 static struct client* clientHead;
-static int clientOffset;
+static struct client* currentClient;
 static int clientTableSize;
 
 //forward declarations
-int findClient(int clientNumber);
+struct client* findClient(int clientNumber);
 
 struct client* addClient(struct request structBuffer);
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
 	clientHead = NULL;
-	clientOffset = 0;
+	currentClient = NULL;
 	char *ownerPrefix =(char*) malloc(sizeof(char[24]));//holds machine name
 
     if (argc != 2)         /* Test for correct number of parameters */
@@ -85,9 +85,9 @@ int main(int argc, char *argv[])
             (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
             DieWithError("recvfrom() failed");
 
-		clientOffset = findClient(structBuffer.c);
+		currentClient = findClient(structBuffer.c);
 
-		printf("Client: %i\n", clientOffset);
+		//printf("Client: %i\n", currentClient);
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 
         printf("Client IP: %s \n", structBuffer.client_ip);
@@ -97,36 +97,36 @@ int main(int argc, char *argv[])
         printf("Incarnation Number: %i \n", structBuffer.i);
         printf("Operation: %s\n\n", structBuffer.operation);
 
-		if(clientOffset == -1) {
+		if(currentClient == NULL) {
 			printf("Adding client... %s\n", addClient(structBuffer)->name);
-			printf("Client at %i\n", findClient(structBuffer.c));
+			//printf("Client at %i\n", findClient(structBuffer.c));
 			printf("Client Table size: %i\n", clientTableSize);
-			clientOffset = findClient(structBuffer.c);
+			currentClient = findClient(structBuffer.c);
 		}
 		else{
-			//printf("Current file number: % \n", (clientHead + clientOffset)->file);
+			//printf("Current file number: % \n", currentClient->file);
 		}
 
 		/*DEBUG
 		printf("Comparing client. . .\n");
 		printf("\n\n--Client Table Data--\n");
-		printf("Client IP: %s \n", (clientHead + clientOffset)->ip);
-        printf("Machine Name: %s \n", (clientHead + clientOffset)->name);
-		printf("Client Number: %i \n", (clientHead + clientOffset)->clientNumber);
-        printf("Request Number: %i \n", (clientHead + clientOffset)->request);
-        printf("Incarnation Number: %i \n", (clientHead + clientOffset)->incarnation);
-		printf("File #: %i\n", (clientHead + clientOffset)->file);
+		printf("Client IP: %s \n", currentClient->ip);
+        printf("Machine Name: %s \n", currentClient->name);
+		printf("Client Number: %i \n", currentClient->clientNumber);
+        printf("Request Number: %i \n", currentClient->request);
+        printf("Incarnation Number: %i \n", currentClient->incarnation);
+		printf("File #: %i\n", currentClient->file);
 		*/
 
 		//ignore request: already fulfilled
-			if(structBuffer.r < (clientHead + clientOffset)->request)
+			if(structBuffer.r < currentClient->request)
 				continue;
 		//check for incarnation problems
-			if(structBuffer.i > (clientHead + clientOffset)->incarnation){
+			if(structBuffer.i > currentClient->incarnation){
 				//client has failed: remove all locks/close files for abandoned clients
 				struct client* incarnationScrub = clientHead;
 				while(incarnationScrub != NULL){
-					if(strcmp(incarnationScrub->name, structBuffer.m)==0){
+					if(strcmp(incarnationScrub->name, structBuffer.m)==0 && incarnationScrub->file != -1){
 						closeFile(incarnationScrub->file);
 						incarnationScrub->file = -1;
 					}
@@ -158,14 +158,14 @@ int main(int argc, char *argv[])
 		size_t fileNamePlusAdditional = strlen(operationFileName);
 		char tempstr[fileNamePlusAdditional+1];
 		char * fileName;
-		strcpy(ownerPrefix, (clientHead + clientOffset)->name);
+		strcpy(ownerPrefix, currentClient->name);
 		strcpy(tempstr, operationFileName);
 		fileName = strtok(tempstr, " ,");
-		strcpy(ownerPrefix, (clientHead + clientOffset)->name);
+		strcpy(ownerPrefix, currentClient->name);
 
 		printf("The instruction in the operation received is: %s\n", instruction);
 		printf("The file name received from client is: %s\n", fileName);
-		
+			
 
 		char paramTemp[fileNamePlusAdditional+1];
 		strcpy(paramTemp, operationFileName);
@@ -230,8 +230,8 @@ int main(int argc, char *argv[])
 			struct responseOpen open;
 
 			//Make a call to the open function and save the returned data to the struct
-			(clientHead + clientOffset)->file = openFile(fileName, param);
-			open.fileDescriptor = (clientHead + clientOffset)->file;
+			currentClient->file = openFile(fileName, param);
+			open.fileDescriptor = currentClient->file;
 			printf("Open File Report: %d\n", open.fileDescriptor);
 
 			//Send the struct back to the client
@@ -243,7 +243,7 @@ int main(int argc, char *argv[])
 			struct responseClose close;
 
 			//Make a call to the close function
-			close.fileDescriptor = closeFile((clientHead + clientOffset)->file);
+			close.fileDescriptor = closeFile(currentClient->file);
 
 			//Send the struct back to the client
 			if (sendto(sock, &close, sizeof(struct responseClose), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseClose)) {
@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 		} else if (strcmp(instruction, "read") == 0) {
 			struct responseRead read;
 
-			readFile((clientHead + clientOffset)->file, read.readBytes, atoi(param));
+			readFile(currentClient->file, read.readBytes, atoi(param));
 
 			//Save the returned data to the struct
 			read.numberOfBytes = atoi(param);
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
 			//removeQuotes(param);
 
 			//Make a call to the write function
-			writeFile((clientHead + clientOffset)->file, param);
+			writeFile(currentClient->file, param);
 
 			//Save the returned data to the struct
 			write.numberOfBytes = sizeof(param);
@@ -283,7 +283,7 @@ int main(int argc, char *argv[])
 			struct responseLseek seek;
 
 			//Make a call to the lseek function and save returned data to struct
-			seek.position = seekFile((clientHead + clientOffset)->file, atoi(param));
+			seek.position = seekFile(currentClient->file, atoi(param));
 
 			//Send the struct back to the client
 			if (sendto(sock, &seek, sizeof(struct responseLseek), 0,(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(struct responseLseek)) {
@@ -295,24 +295,21 @@ int main(int argc, char *argv[])
 		/* END OF CONDITIONAL STATEMENTS TO DETEMINE WHICH STRUCT TO SEND BACK TO CLIENT */
 
 		//update request number
-		(clientHead + clientOffset)->request = structBuffer.r;
+		currentClient->request = structBuffer.r;
 		printf("finished command\n");
     }
     /* NOT REACHED */
 }
 
-int findClient(int clientNumber){
-	int pointerOffset = 0;
-	while((clientHead + pointerOffset) != NULL && 
-		(clientNumber != (clientHead + pointerOffset)->clientNumber)){
-		pointerOffset++;
+struct client* findClient(int clientNumber){
+	//DEBUG
+	//printf("find client..\n");
+	struct client* clientPointer = clientHead;
+	while((struct client*)(clientPointer) != NULL && 
+		(clientNumber != (clientPointer)->clientNumber)){
+			clientPointer = clientPointer->next;
 	}
-
-	//check if client is found, if not return -1
-	if((clientHead + pointerOffset) == NULL)
-		return -1;
-	else
-		return pointerOffset;
+	return clientPointer;
 }
 
 struct client* addClient(struct request structBuffer){
@@ -330,20 +327,24 @@ struct client* addClient(struct request structBuffer){
 }
 
 bool dropClient(int clientNumber){
-	int pointerOffset = findClient(clientNumber);
+	struct client* clientPointer = findClient(clientNumber);
 	struct client* target;
 	//check to see if client exists
-	if (pointerOffset == -1)
+	if (clientPointer == NULL)
 		return false;
 	//the client is at the head of the list
-	else if(pointerOffset == 0){
+	else if(clientPointer == clientHead){
 		target = clientHead;
 		clientHead = clientHead -> next;
 		free(target);
 	}
 	else{
-		target = (clientHead + pointerOffset);
-		(target-1)->next = target->next;
+		target = (clientPointer);
+		clientPointer = clientHead;
+		while(clientPointer != NULL && clientPointer->next != target){
+			clientPointer = clientPointer->next;
+		}
+		clientPointer = target->next;
 		free(target);
 	}
 	

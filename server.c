@@ -118,20 +118,23 @@ int main(int argc, char *argv[])
 		printf("File #: %i\n", currentClient->file);
 		*/
 
-		//ignore request: already fulfilled
-		if(structBuffer.r < currentClient->request) {
+		//ignore request: already fulfilled -this is requested by the assignement; but it's very unwieldy
+		/*if(structBuffer.r < currentClient->request) {
 			continue;
-		}
+		}*/
+
 		//check for incarnation problems
 		if(structBuffer.i > currentClient->incarnation){
+			printf("Client Failed, scrubbing\n");
 			//client has failed: remove all locks/close files for abandoned clients
 			struct client* incarnationScrub = clientHead;
 			while(incarnationScrub != NULL){
-				if(strcmp(incarnationScrub->name, structBuffer.m)==0 && incarnationScrub->file != -1){
+				if(strcmp(incarnationScrub->name, structBuffer.m)==0){
 					closeFile(incarnationScrub->file);
 					incarnationScrub->file = -1;
-					incarnationScrub = incarnationScrub->next;
+					incarnationScrub->incarnation = structBuffer.i;
 				}
+				incarnationScrub = incarnationScrub->next;
 			}
 		}
 
